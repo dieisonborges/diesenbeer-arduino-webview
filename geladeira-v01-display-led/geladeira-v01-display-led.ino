@@ -5,46 +5,37 @@
 #include <LiquidCrystal.h>
  
 //Define os pinos que serão utilizados para ligação ao display
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
-
-//Array simbolo grau
-byte grau[8] ={ B00001100,
-                B00010010,
-                B00010010,
-                B00001100,
-                B00000000,
-                B00000000,
-                B00000000,
-                B00000000,};
+LiquidCrystal lcd(53, 51, 49, 47, 45, 43);
  
 void setup()
 {
   //Define o número de colunas e linhas do LCD
   lcd.begin(16, 2);
-  lcd.clear(); //Limpa o LCD
-  lcd.createChar(0, grau);
 }
  
 void loop()
 {
   //Limpa a tela
   lcd.clear();
-
-  /* Temperatura Atual */
-  //Posiciona o cursor na coluna, linha;
-  lcd.setCursor(0, 0);
+  //Posiciona o cursor na coluna 3, linha 0;
+  lcd.setCursor(3, 0);
   //Envia o texto entre aspas para o LCD
-  lcd.print("Temp: ");
-  lcd.print("12");
-  //Mostra o simbolo do grau formado pelo array
-  //lcd.write((byte)0);
-  
-  /* Temperatura Configurada */
-  //Posiciona o cursor na coluna, linha;
-  lcd.setCursor(0, 1);
-  lcd.print("Conf: ");
-  lcd.print("18");
-  //Mostra o simbolo do grau formado pelo array
-  lcd.write((byte)0);
+  lcd.print("FILIPEFLOP");
+  lcd.setCursor(3, 1);
+  lcd.print(" LCD 16x2");
   delay(5000);
+   
+  //Rolagem para a esquerda
+  for (int posicao = 0; posicao < 3; posicao++)
+  {
+    lcd.scrollDisplayLeft();
+    delay(300);
+  }
+   
+  //Rolagem para a direita
+  for (int posicao = 0; posicao < 6; posicao++)
+  {
+    lcd.scrollDisplayRight();
+    delay(300);
+  }
 }
