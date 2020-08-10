@@ -14,8 +14,6 @@ DallasTemperature sensors(&oneWire);
 uint8_t sensor1[8] = { 0x28, 0xFF, 0x66, 0x0D, 0xC3, 0x16, 0x03, 0x4B };
 uint8_t sensor2[8] = { 0x28, 0xFF, 0xEE, 0xEE, 0xC2, 0x16, 0x03, 0xD4 };
 
-//float tempC;
-
 //Temperatura Configurada pelo usuário
 float temp_config_geladeira = 2; // 2°
 
@@ -77,6 +75,8 @@ const int botao_down = 27; // - PINO DIGITAL UTILIZADO PELO LED - BAIXO
 //Botão Reset LCD
 const int botao_reset_lcd = 29;
 
+int timer_bug_cont = 0;
+
 void setup() {
   Ethernet.begin(mac, ip); //PASSA OS PARÂMETROS PARA A FUNÇÃO QUE VAI FAZER A CONEXÃO COM A REDE
   server.begin(); //INICIA O SERVIDOR PARA RECEBER DADOS NA PORTA 80
@@ -114,6 +114,13 @@ void reset_lcd(){
 }
 
 void loop() {
+
+  //Controle para não delisgar e ligar rápido
+  timer_bug_cont++;
+  if(timer_bug_cont==100){
+    timer_bug_cont=0;
+  }
+  
   /* Sensor de Temperatura */
   sensors.requestTemperatures();
   temp_sensor_geladeira = sensors.getTempC(sensor1);
@@ -154,6 +161,32 @@ void loop() {
   //Mostra o simbolo do grau formado pelo array
   lcd.write(223); 
   /* ------------------ FIM LCD - Temperatura Atual ------------------- */
+
+  //Controle da Resistência Brassagem
+  if(temp_config_panela<temp_sensor_panela){
+    if(timer_bug_cont==0){
+      digitalWrite(rele2_m2_resistencia_panela, HIGH); //DESLIGA PARA ESFRIAR
+      panela_ligada = false;
+    }
+  }else if(temp_config_panela>temp_sensor_panela){
+    if(timer_bug_cont==0){
+      digitalWrite(rele2_m2_resistencia_panela, LOW); //LIGA PARA ESQUENTAR
+      panela_ligada = true;
+    }
+  }
+
+  //Controle da Geladeira
+  if(temp_config_geladeira>temp_sensor_geladeira){
+    if(timer_bug_cont==0){
+      digitalWrite(rele4_m1_geladeira, HIGH); //DESLIGA PARA ESQUENTAR
+      geladeira_ligada = false;
+    }
+  }else if(temp_config_geladeira<temp_sensor_geladeira){
+    if(timer_bug_cont==0){
+      digitalWrite(rele4_m1_geladeira, LOW); //LIGA PARA GELAR
+      geladeira_ligada = true;
+    }
+  }
   
   EthernetClient client = server.available(); //CRIA UMA CONEXÃO COM O CLIENTE
   if (client) { // SE EXISTE CLIENTE FAZ
@@ -230,7 +263,7 @@ void loop() {
           client.print("<ul class='navbar-nav'>");
           client.print("<li class='nav-item'>");
           client.print("<a class='nav-link' data-widget='pushmenu' href='#' role='button'><i class='fas fa-bars'></i></a>");
-          client.print("</li>");          
+          client.print("</li>");                   
           client.print("</ul>");
           client.print("</nav> ");
           client.print("<aside class='main-sidebar sidebar-dark-primary elevation-4'> ");
@@ -276,6 +309,8 @@ void loop() {
           client.print("<p>Ligar</p>");
           client.print("</a>");
           client.print("</li>");
+          
+      
           client.print("<li class='nav-item'>");
           client.print("<a href='.?bomba=false' class='nav-link'>");
           client.print("<i class='far fa-circle nav-icon text-success'></i>");
@@ -285,21 +320,35 @@ void loop() {
           client.print("</ul>");
           client.print("</li>");
           /* -------------------------- FIM BOMBA DE RECIRCULAÇÃO --------------------------------------------*/
+
+          
           
           client.print("</ul>");
           client.print("</nav> ");
           client.print("</div> ");
           client.print("</aside> ");
           client.print("<div class='content-wrapper'> ");
+
+          /* --------------------------- Timer Bug ------------------------------------------------- */
+          client.print("<section class='content-header'>");
+          client.print("<h1><a href='/' class='btn btn-primary btn-lg'><i class='fas fa-home'></i></a>");
+          client.print("<b class='ml-3'>Diensenbeer</b> Homebrew");
+          client.print("<small class='float-right'>"); 
+          client.print(" <i class='fas fa-hourglass-half'></i> ");                   
+          client.print(timer_bug_cont);
+          client.print("% </small></h1></section>");
+          /* --------------------------- FIM Timer Bug ------------------------------------------------- */ 
+          
           client.print("<section class='content-header'>");
           client.print("<div class='container-fluid'>");
           client.print("<div class='row mb-2'>");
           client.print("<div class='col-sm-6'>");
-          client.print("<h1> <i class='fas fa-beer'></i>  Equipamentos <small><a href='/'><i class='fas fa-home'></i> HomeBrew</a></small></h1> ");
+          client.print("<h1> <i class='fas fa-beer'></i>  Equipamentos</h1> ");
           client.print("</div>");
           client.print("</div>");
           client.print("</div> ");
           client.print("</section>");
+          
           client.print("<section class='content'> ");    
           client.print("<div class='row'>");
 
@@ -319,14 +368,7 @@ void loop() {
             temp_config_panela--;
           }
 
-          //Controle da Resistência Brassagem
-          if(temp_config_panela<temp_sensor_panela){
-            digitalWrite(rele2_m2_resistencia_panela, HIGH); //DESLIGA PARA ESFRIAR
-            panela_ligada = false;
-          }else if(temp_config_panela>temp_sensor_panela){
-            digitalWrite(rele2_m2_resistencia_panela, LOW); //LIGA PARA ESQUENTAR
-            panela_ligada = true;
-          }
+          
           
           client.print("<div class='col-md-6'> ");
           client.print("<div class='small-box bg-gradient-warning'>");
@@ -364,8 +406,8 @@ void loop() {
           client.print("<a href='.?temporizador=pause' class='btn btn-default float-right ml-2'><i class='far fa-pause-circle text-primary'></i></a>");
           client.print("<a href='.?temporizador=restart' class='btn btn-default float-right ml-2'><i class='fas fa-redo-alt text-primary'></i></a>");
           client.print("</div>");
-          client.print("<a href='?panela_off' class='small-box-footer'>Desligar Resistência <i class='fas fa-power-off'></i></a>");
-          client.print("<a href='?panela_ferver' class='small-box-footer'>Ferver Panela <i class='fas fa-fire text-red'></i></a>");
+          client.print("<a href='?panela=off' class='small-box-footer'>Desligar Resistência <i class='fas fa-power-off'></i></a>");
+          client.print("<a href='?panela=ferver' class='small-box-footer'>Ferver Panela <i class='fas fa-fire text-red'></i></a>");
           client.print("</div></div>");  
 
           /* ---------------------------------------- FIM BRASSAGEM / PANELA ------------------------------------------------ */
@@ -384,15 +426,7 @@ void loop() {
           }else if (readString.indexOf("geladeira=down") > 0) {
             temp_config_geladeira--;
           }
-
-          //Controle da Geladeira
-          if(temp_config_geladeira>temp_sensor_geladeira){
-            digitalWrite(rele4_m1_geladeira, HIGH); //DESLIGA PARA ESQUENTAR
-            geladeira_ligada = false;
-          }else if(temp_config_geladeira<temp_sensor_geladeira){
-            digitalWrite(rele4_m1_geladeira, LOW); //LIGA PARA GELAR
-            geladeira_ligada = true;
-          }
+          
 
           client.print("<div class='col-md-3'> ");
           client.print("<div class='small-box bg-gradient-info'> ");
@@ -442,4 +476,6 @@ void loop() {
       }
     }
   }
+
+  delay(10);
 }
